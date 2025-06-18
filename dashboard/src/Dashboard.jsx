@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+// src/Dashboard.jsx
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Filters from './components/Filters';
 import StatsCards from './components/StatsCards';
@@ -6,6 +7,7 @@ import LineChart from './components/LineChart';
 import PieChart from './components/PieChart';
 import Histogram from './components/Histogram';
 import BarChart from './components/BarChart';
+import MapChart from './components/MapChart';
 
 export default function Dashboard() {
     // États principaux
@@ -32,6 +34,9 @@ export default function Dashboard() {
 
     // Agrégation par continent
     const [byContinent, setByContinent] = useState([]);
+
+    // Agrégation par pays (pour la carte)
+    const [byCountry, setByCountry] = useState([]);
 
     // Charger la liste des pays et pandémies au montage
     useEffect(() => {
@@ -97,6 +102,24 @@ export default function Dashboard() {
             .catch(err => console.error("Erreur byContinent:", err));
     }, [statType]);
 
+    // Récupérer l'agrégation par pays pour la carte
+    useEffect(() => {
+        axios.get('http://127.0.0.1:5000/pandemic_country/countries')
+            .then(res => {
+                const transformed = res.data.map(item => ({
+                    countryCode: item.countryCode,
+                    lat: item.lat,
+                    long: item.long,
+                    value:
+                        statType === 'daily_new_cases'
+                            ? item.daily_new_cases
+                            : item.daily_deaths,
+                }));
+                setByCountry(transformed);
+            })
+            .catch(err => console.error("Erreur byCountry :", err));
+    }, [statType]);
+
     return (
         <div className="min-h-screen bg-gray-900 text-white p-4">
             {/* Header */}
@@ -106,7 +129,7 @@ export default function Dashboard() {
 
             {/* Conteneur principal responsive : column sur mobile, row à partir de md */}
             <div className="flex flex-col md:flex-row items-start">
-                {/* Colonne de gauche : Filters (largeur fixée dans Filters.jsx) */}
+                {/* Colonne de gauche : Filters */}
                 <Filters
                     countries={countries}
                     pandemics={pandemics}
@@ -122,7 +145,7 @@ export default function Dashboard() {
                     setEndDate={setEndDate}
                 />
 
-                {/* Contenu principal : full width mobile, margin-left sur md+ */}
+                {/* Contenu principal */}
                 <div className="flex-1 space-y-8 mt-6 md:mt-0 md:ml-6">
                     <StatsCards
                         stats={stats}
@@ -142,6 +165,11 @@ export default function Dashboard() {
                                 <BarChart byContinent={byContinent} statType={statType} />
                             </div>
                         </div>
+                    </section>
+
+                    {/* Ajout de la carte du monde en dessous des graphiques existants */}
+                    <section className="mt-8">
+                        <MapChart byCountry={byCountry} statType={statType} />
                     </section>
                 </div>
             </div>
